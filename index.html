@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Firebase Realtime Database Web</title>
+ <script src="https://www.gstatic.com/firebasejs/4.9.0/firebase.js"></script>
+ <script>
+   // Initialize Firebase
+   var config = {
+    apiKey: "AIzaSyCWaphhQmTAtlDfJgL0Ux9oiro1MrRuQ1U",
+    authDomain: "appusers-1a81a.firebaseapp.com",
+    databaseURL: "https://appusers-1a81a-default-rtdb.firebaseio.com",
+    projectId: "appusers-1a81a",
+    storageBucket: "appusers-1a81a.appspot.com",
+    messagingSenderId: "127688283539",
+   };
+
+   firebase.initializeApp(config);
+ </script>
+</head>
+<body>
+    <h1>UserLog</h1>
+ <table>
+
+  <tr>
+   <td>User Name: </td>
+   <td><input type="text" name="user_name" id="user_name" /></td>
+  </tr>
+  <tr>
+   <td>Location: (Don't Type here just hit the button to autofill)</td>
+   <td><input type="text" name="location" id="user_location" /></td>
+  </tr>
+  <tr>
+   <td colspan="2">
+    <input type="button" value="Get Location" onclick="getLocation();" />
+   </td>
+  </tr>
+  <tr>
+   <td colspan="2">
+    <input type="button" value="Save" onclick="save_user();" />
+   </td>
+  </tr>
+ </table>
+ 
+ <h3>Users List</h3>
+ 
+ <table id="tbl_users_list" border="1">
+  <tr>
+   <th>#ID</th>
+   <th>NAME</th>
+   <th>LOCATION</th>
+   <th>DATE & TIME ADDED</th>
+  </tr>
+ </table>
+ 
+ <script>
+ 
+  var tblUsers = document.getElementById('tbl_users_list');
+  var databaseRef = firebase.database().ref('users/');
+  
+  function displayUserData() {
+    databaseRef.once('value', function(snapshot) {
+      var data = [];
+      snapshot.forEach(function(childSnapshot) {
+        var childKey = childSnapshot.key;
+        var childData = childSnapshot.val();
+        data.unshift({ id: childKey, user_name: childData.user_name, location: childData.location, timestamp: childData.timestamp }); // Add to the beginning of the array
+      });
+      
+      // Clear the table except for the header row
+      while (tblUsers.rows.length > 1) {
+        tblUsers.deleteRow(1);
+      }
+      
+      // Display the data in the table
+      data.forEach(function(user, index) {
+        var row = tblUsers.insertRow(-1); // Insert at the end of the table
+        var cellId = row.insertCell(0);
+        var cellName = row.insertCell(1);
+        var cellLocation = row.insertCell(2); // Add a new cell for location
+        var cellTimestamp = row.insertCell(3); // Add a new cell for timestamp
+        cellId.appendChild(document.createTextNode(user.id));
+        cellName.appendChild(document.createTextNode(user.user_name));
+        cellLocation.appendChild(document.createTextNode(user.location.townState)); // Display only town and state
+        
+        // Format the timestamp
+        var timestamp = new Date(user.timestamp);
+        cellTimestamp.appendChild(document.createTextNode(timestamp.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))); // Adjust timezone as needed
+      });
+    });
+  }
+  
+  displayUserData(); // Initial display
+
+  function getLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function(position) {
+        var latitude = position.coords.latitude;
+        var longitude = position.coords.longitude;
+
+        // Reverse geocode using OpenCage Geocoder API
+        var apiKey = 'df13e9210f3742bdbdd074d86c8f3844'; // Replace with your OpenCage API key
+        var apiUrl = 'https://api.opencagedata.com/geocode/v1/json?key=' + apiKey + '&q=' + latitude + '+' + longitude;
+
+        fetch(apiUrl)
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            if (data.results && data.results.length > 0) {
+              var formattedLocation = data.results[0].components;
+              var townState = formattedLocation.town + ', ' + formattedLocation.state;
+              document.getElementById('user_location').value = townState;
+              
+              // You can also save the complete address and display only town and state in the database
+              var fullLocation = data.results[0].formatted;
+              document.getElementById('user_location').fullLocation = fullLocation;
+            } else {
+              alert('Location not found');
+            }
+          })
+          .catch(function(error) {
+            alert('Error fetching location: ' + error);
+          });
+      });
+    } else {
+      alert("Geolocation is not supported by this browser.");
+    }
+  }
+  
+  function save_user(){
+   var user_name = document.getElementById('user_name').value;
+   var user_location = document.getElementById('user_location').value;
+   var fullLocation = document.getElementById('user_location').fullLocation;
+  
+   // Get the current number of users and increment it by 1
+   databaseRef.once('value', function(snapshot) {
+     var count = snapshot.numChildren() + 1;
+     var uid = String(count).padStart(6, '0'); // Format user ID with leading zeros
+   
+     var data = {
+       user_id: uid,
+       user_name: user_name,
+       location: {
+         townState: user_location, // Store only town and state
+         fullAddress: fullLocation // Store complete address
+       },
+       timestamp: firebase.database.ServerValue.TIMESTAMP // Store timestamp
+     }
+   
+     databaseRef.child(uid).set(data).then(function() {
+       alert('The user is created successfully!');
+       reload_page();
+     });
+   });
+  }
+  
+  function reload_page(){
+   displayUserData(); // Reload and display the updated data
+  }
+  
+ </script>
+</body>
+</html>
