@@ -3,21 +3,30 @@
 <head>
  <title>Firebase Realtime Database Web</title>
  <script src="https://www.gstatic.com/firebasejs/4.9.0/firebase.js"></script>
- <script>
-   // Initialize Firebase
-   var config = {
-    apiKey: "AIzaSyCWaphhQmTAtlDfJgL0Ux9oiro1MrRuQ1U",
-    authDomain: "appusers-1a81a.firebaseapp.com",
-    databaseURL: "https://appusers-1a81a-default-rtdb.firebaseio.com",
-    projectId: "appusers-1a81a",
-    storageBucket: "appusers-1a81a.appspot.com",
-    messagingSenderId: "127688283539",
-   };
+ <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-app.js"></script>
+ <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-database.js"></script>
+ 
+<!-- initalize firebase for database-->
 
-   firebase.initializeApp(config);
- </script>
+
+
 </head>
 <body>
+
+
+    <button id="signInBtn">Sign in with Google</button>
+    <div id="signInResult"></div>
+    <table border="1">
+      <tr>
+        <th>Full Name</th>
+        <th>Photo</th>
+      </tr>
+      <tr id="userDetails">
+        <td></td>
+        <td></td>
+      </tr>
+    </table>
+
     <h1>UserLog</h1>
  <table>
 
@@ -52,6 +61,134 @@
   </tr>
  </table>
  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ <!-- start firebase for data loging -->
+ <script>
+    var config = {
+     apiKey: "AIzaSyCWaphhQmTAtlDfJgL0Ux9oiro1MrRuQ1U",
+     authDomain: "appusers-1a81a.firebaseapp.com",
+     databaseURL: "https://appusers-1a81a-default-rtdb.firebaseio.com",
+     projectId: "appusers-1a81a",
+     storageBucket: "appusers-1a81a.appspot.com",
+     messagingSenderId: "127688283539",
+    };
+ 
+    firebase.initializeApp(config);
+  </script>
+ 
+ <!-- start firebase for google login -->
+ <script type="module">
+     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.21.0/firebase-app.js";
+     import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.21.0/firebase-auth.js";
+ 
+     const firebaseConfig = {
+     apiKey: "AIzaSyCWaphhQmTAtlDfJgL0Ux9oiro1MrRuQ1U",
+     authDomain: "appusers-1a81a.firebaseapp.com",
+     databaseURL: "https://appusers-1a81a-default-rtdb.firebaseio.com",
+     projectId: "appusers-1a81a",
+     storageBucket: "appusers-1a81a.appspot.com",
+     messagingSenderId: "127688283539",
+     };
+ 
+     const app = initializeApp(firebaseConfig);
+ 
+     let userFullName = ""; // Variable to store the user's name
+ 
+
+     function signIn() {
+  document.getElementById('signInResult').innerHTML = 'Working...';
+
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  signInWithPopup(auth, provider)
+    .then(result => {
+      const user = result.user;
+      userFullName = user.displayName; // Store the user's name in the variable
+      const photoURL = user.photoURL;
+
+      // Set the user's name in the input field
+      document.getElementById('user_name').value = userFullName;
+
+      document.getElementById('signInResult').innerHTML = 'Success: Signed in as ' + userFullName;
+      document.getElementById('userDetails').innerHTML = `
+        <td>${userFullName}</td>
+        <td><img src="${photoURL}" alt="User Photo" width="100"></td>
+      `;
+    })
+    .catch(error => {
+      const errorMessage = error.message;
+      document.getElementById('signInResult').innerHTML = 'Error: ' + errorMessage;
+    });
+}
+
+
+
+ 
+     document.getElementById('signInBtn').onclick = signIn;
+ 
+     function saveFullName() {
+             var fullName = document.getElementById("fullName").value;
+ 
+             if (fullName.trim() === "") {
+                 alert("Please enter your full name.");
+                 return;
+             }
+ 
+             var database = firebase.database();
+             var dataRef = database.ref("userNames"); // Replace with your desired database node
+             dataRef.push(fullName);
+             
+             // You can also clear the input field or perform any other actions here.
+             document.getElementById("fullName").value = "";
+         }
+ 
+ 
+         var database = firebase.database();
+ var dataRef = database.ref("userNames"); // Use the same database node where you saved the names
+ var table = document.getElementById("fullNameTable"); // Replace with your actual table ID
+ 
+ dataRef.on("value", function(snapshot) {
+     table.innerHTML = ""; // Clear the table before populating it
+ 
+     snapshot.forEach(function(childSnapshot) {
+         var fullName = childSnapshot.val();
+         var row = table.insertRow();
+         var cell = row.insertCell(0);
+         cell.innerHTML = fullName;
+     });
+ });
+   </script>
+
+
+<!-- this code fills in the table -->
  <script>
  
   var tblUsers = document.getElementById('tbl_users_list');
@@ -127,32 +264,33 @@
     }
   }
   
-  function save_user(){
-   var user_name = document.getElementById('user_name').value;
-   var user_location = document.getElementById('user_location').value;
-   var fullLocation = document.getElementById('user_location').fullLocation;
-  
-   // Get the current number of users and increment it by 1
-   databaseRef.once('value', function(snapshot) {
-     var count = snapshot.numChildren() + 1;
-     var uid = String(count).padStart(6, '0'); // Format user ID with leading zeros
-   
-     var data = {
-       user_id: uid,
-       user_name: user_name,
-       location: {
-         townState: user_location, // Store only town and state
-         fullAddress: fullLocation // Store complete address
-       },
-       timestamp: firebase.database.ServerValue.TIMESTAMP // Store timestamp
-     }
-   
-     databaseRef.child(uid).set(data).then(function() {
-       alert('The user is created successfully!');
-       reload_page();
-     });
-   });
-  }
+  function save_user() {
+  var user_name = document.getElementById('user_name').value;
+  var user_location = document.getElementById('user_location').value;
+  var fullLocation = document.getElementById('user_location').fullLocation;
+
+  // Get the current number of users and increment it by 1
+  databaseRef.once('value', function(snapshot) {
+    var count = snapshot.numChildren() + 1;
+    var uid = String(count).padStart(6, '0'); // Format user ID with leading zeros
+
+    var data = {
+      user_id: uid,
+      user_name: user_name, // Use the user's name from the input field
+      location: {
+        townState: user_location, // Store only town and state
+        fullAddress: fullLocation // Store complete address
+      },
+      timestamp: firebase.database.ServerValue.TIMESTAMP // Store timestamp
+    }
+
+    databaseRef.child(uid).set(data).then(function() {
+      alert('The user is created successfully!');
+      reload_page();
+    });
+  });
+}
+
   
   function reload_page(){
    displayUserData(); // Reload and display the updated data
